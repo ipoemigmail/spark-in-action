@@ -5,43 +5,18 @@ ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organization := "ben.jeong"
 ThisBuild / organizationName := "ben.jeong"
 
-lazy val Versions = new {
-  lazy val scalaTest = "3.0.5"
-  lazy val scalaCheck = "1.14.0"
-  lazy val cats = "2.0.0"
-  lazy val catsEffect = "2.0.0"
-  lazy val circe = "0.11.1"
-  lazy val spark= "2.4.4"
-  lazy val kindProjector = "0.11.0"
-}
-
 lazy val root = (project in file("."))
   .settings(
     name := "spark-in-action",
 
     resolvers ++= Seq("OSS" at "http://oss.sonatype.org/content/repositories/releases"),
 
-    addCompilerPlugin("org.typelevel" % "kind-projector" % Versions.kindProjector cross CrossVersion.full),
+    addCompilerPlugin(Dependencies.kindProjector cross CrossVersion.full),
 
-    libraryDependencies += "org.typelevel" %% "cats-effect" % Versions.catsEffect,
-
-    libraryDependencies ++= Seq(
-      "io.circe" %% "circe-core",
-      "io.circe" %% "circe-generic",
-      "io.circe" %% "circe-generic-extras",
-      "io.circe" %% "circe-parser"
-    ).map(_ % Versions.circe),
-
-    libraryDependencies ++= Seq(
-      "org.apache.spark" %% "spark-yarn",
-      "org.apache.spark" %% "spark-core",
-      "org.apache.spark" %% "spark-sql",
-      "org.apache.spark" %% "spark-mllib",
-      "org.apache.spark" %% "spark-streaming",
-      "org.apache.spark" %% "spark-hive",
-    ).map(_ % Versions.spark),
-
-    libraryDependencies += "org.scalacheck" %% "scalacheck" % Versions.scalaCheck % "test",
+    libraryDependencies += Dependencies.catsEffect,
+    libraryDependencies ++= Dependencies.circeBundle,
+    libraryDependencies ++= Dependencies.sparkBundle,
+    libraryDependencies += Dependencies.scalaCheck % "test",
 
     scalacOptions ++= Seq(
       "-target:jvm-1.8",
