@@ -1,12 +1,13 @@
 package sparkinaction.ch08
 
-import org.apache.spark._
 import org.apache.spark.ml.feature.OneHotEncoderEstimator
 import org.apache.spark.sql._
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.ml.feature.VectorAssembler
+import org.apache.spark.ml.classification.LogisticRegression
+import org.apache.spark.ml.param.ParamMap
 
 import scala.util.Try
 
@@ -33,7 +34,6 @@ object Ch08 {
 
   def indexStringColumns(df: DataFrame, cols: Array[String]): DataFrame = {
     import org.apache.spark.ml.feature.StringIndexer
-    import org.apache.spark.ml.feature.StringIndexerModel
 
     cols.foldLeft(df) { (df1, c) =>
       val si = new StringIndexer().setInputCol(c).setOutputCol(c + "-num")
@@ -43,7 +43,6 @@ object Ch08 {
   }
 
   def oneHotEncodeColumns(df: DataFrame, cols: Array[String]): DataFrame = {
-    import org.apache.spark.ml.feature.OneHotEncoder
     val onehotenc =
       new OneHotEncoderEstimator().setInputCols(cols).setOutputCols(cols.map(_ + "-onehot")).setDropLast(false)
     cols.foldLeft(onehotenc.fit(df).transform(df)) { (df1, c) =>
@@ -56,12 +55,10 @@ object Ch08 {
 
     def sc = spark.sparkContext
 
-    import spark.implicits._
-
     val censusRaw = sc
       .textFile("ch08/adult.raw", 4)
       .map(x => x.split(",").map(_.trim))
-      .map(row => row.map(x => Try(x.toDouble).getOrElse(x)))
+      .map(row => row.map(x => Try(x.toDouble).getOrElse(x): Any))
 
     val dfraw = spark.createDataFrame(censusRaw.map(Row.fromSeq(_)), adultSchema)
     val dfrawrp = dfraw.na.replace(Array("workclass"), Map("?" -> "Private"))
@@ -100,10 +97,19 @@ object Ch08 {
     va.setInputCols(dfhot.columns.diff(Array("income")))
     val lpoints = va.transform(dfhot).select("features", "income").withColumnRenamed("income", "label")
 
-    dfrawnona.show(truncate = false)
-    dfnumeric.show(truncate = false)
-    dfhot.show(truncate = false)
-    lpoints.show(truncate = false)
+    //dfrawnona.show(truncate = false)
+    //dfnumeric.show(truncate = false)
+    //dfhot.show(truncate = false)
+    //lpoints.show(truncate = false)
+
+    val splits = lpoints.randomSplit(Array(0.8, 0.2))
+    val adultTrain = splits(0).cache()
+    val adultValid = splits(1).cache()
+
+    val lr = new LogisticRegression
+    val lrmodel = lr.fit(adultTrain, ParamMap(lr.regParam -> 0.01, lr.maxIter -> 500, lr.fitIntercept -> true))
+
+    println(lrmodel.coefficients)
   }
 
 }
